@@ -26,3 +26,23 @@ Here are a few examples for you to reuse and build on:
 - [Arduino GPS](https://github.com/openmind/OM1/blob/main/src/inputs/plugins/gps.py)
 
 Learn how to build a new input plugin [here](../developer_cookbook/input.mdx)
+## GoogleASRInput Configuration
+
+To use the [GoogleASRInput](cci:2://file:///C:/Users/Admin/.gemini/antigravity/scratch/OM1_contribution/src/inputs/plugins/google_asr.py:81:0-294:52) plugin, add it to your `agent_inputs` list in the configuration file.
+
+### Parameters
+
+*   `type`: Must be `"GoogleASRInput"`.
+*   `config`:
+    *   `language`: (Optional) The language code for speech recognition. Defaults to `"english"`.
+        *   Supported values: `"english"`, `"chinese"`, `"german"`, `"french"`, `"japanese"`, `"korean"`, `"spanish"`, `"italian"`, `"portuguese"`, `"russian"`, `"arabic"`, and `"auto"` (Automatic Detection).
+
+### Example
+
+```json5
+{
+  "type": "GoogleASRInput",
+  "config": {
+    "language": "auto"  // or "chinese", "english", etc.
+  }
+}

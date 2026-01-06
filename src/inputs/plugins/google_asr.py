@@ -28,6 +28,7 @@ LANGUAGE_CODE_MAP: dict = {
     "portuguese": "pt-BR",
     "russian": "ru-RU",
     "arabic": "ar-SA",
+    "auto": "auto"
 }
 
 

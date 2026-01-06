@@ -38,3 +38,12 @@ repos:
     hooks:
       - id: typos
         exclude: ^(src/unitree|src/ubtech)/
+
+  - repo: local
+    hooks:
+      - id: check-json5
+        name: check-json5
+        entry: python scripts/lint_json5.py
+        language: python
+        additional_dependencies: [json5]
+        files: \.json5$

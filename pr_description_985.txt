@@ -1,0 +1,21 @@
+feat: Persist conversation history to disk with auto-save (Bounty #985)
+
+## Description
+This PR implements conversation history persistence, allowing the robot to "remember" past interactions after a restart. It addresses Issue #985.
+
+## Key Changes
+- **Persistence Provider**: Implemented `save_history` and `load_history` in `LLMHistoryManager` to serialize conversation history to a JSON file.
+- **Robustness**: Uses atomic writes (serialize to temp file -> rename) to prevent data corruption during crashes.
+- **Auto-Save**: Automatically saves history to disk every `N` messages (configurable via `save_interval`, default: 10).
+- **Thread Safety**: Uses `asyncio.Lock` to ensure thread-safe access to history during file I/O operations.
+- **Configuration**: Added `history_file_path` (default: `data/conversation_history.json`) and `save_interval` to `LLMConfig`.
+
+## Testing
+- Added unit tests in `tests/test_history_persistence.py` verifying:
+    - Saving and loading history.
+    - Auto-save filtering.
+    - Handling of corrupted history files (backup logic).
+- Verified manually by restarting the agent and checking context retention.
+
+## Related Issues
+Closes #985

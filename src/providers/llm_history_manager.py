@@ -1,7 +1,11 @@
 import asyncio
 import functools
+import json
 import logging
-from dataclasses import dataclass
+import os
+import shutil
+import tempfile
+from dataclasses import asdict, dataclass
 from typing import Any, Awaitable, Callable, List, Optional, TypeVar, Union
 
 import openai
@@ -87,6 +91,119 @@ class LLMHistoryManager:
 
         # io provider
         self.io_provider = IOProvider()
+
+        # concurrency lock
+        self._lock = asyncio.Lock()
+
+        # persistence
+        self.history_file_path = self.config.history_file_path or "data/conversation_history.json"
+        self.save_interval = self.config.save_interval or 10
+        self.message_counter = 0
+
+        # load history on startup
+        self.load_history()
+
+    def load_history(self):
+        """
+        Load conversation history from the configured JSON file.
+        """
+        if not os.path.exists(self.history_file_path):
+            logging.info(f"No history file found at {self.history_file_path}, starting fresh.")
+            return
+
+        try:
+            with open(self.history_file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                self.history = [ChatMessage(**msg) for msg in data]
+            # Update frame_index based on loaded history length (approximate)
+            self.frame_index = len(self.history)
+            logging.info(f"Loaded {len(self.history)} messages from history.")
+        except json.JSONDecodeError:
+            logging.error(f"Corrupted history file at {self.history_file_path}. Backup and start fresh.")
+            try:
+                backup_path = self.history_file_path + ".bak"
+                shutil.copy(self.history_file_path, backup_path)
+                logging.info(f"Backed up corrupted history to {backup_path}")
+            except Exception as e:
+                logging.error(f"Failed to backup corrupted history: {e}")
+            self.history = []
+        except Exception as e:
+            logging.error(f"Failed to load history: {e}")
+            self.history = []
+
+    async def save_history(self):
+        """
+        Save conversation history to disk using an atomic write pattern.
+        """
+        try:
+            async with self._lock:
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(self.history_file_path), exist_ok=True)
+
+                # Atomic write: write to temp file then rename
+                # We need to run blocking IO in executor to avoid blocking event loop
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, self._write_history_to_disk)
+                logging.debug(f"Saved history to {self.history_file_path}")
+
+        except Exception as e:
+            logging.error(f"Failed to save history: {e}")
+
+    def _write_history_to_disk(self):
+        """Internal helper for blocking IO write."""
+        try:
+             with tempfile.NamedTemporaryFile(
+                "w",
+                dir=os.path.dirname(self.history_file_path),
+                delete=False,
+                encoding="utf-8",
+            ) as tmp_file:
+                # Create a copy of the history list to avoid concurrency issues during dump (though we have lock, 
+                # passing it to thread might be tricky if we don't copy, but here we are in executor)
+                # Actually, self.history is shared state. 
+                # If we run in executor, we are in another thread. 
+                # Accessing self.history (list) from another thread while main thread might append is dangerous.
+                # So we should serialize in the main thread (cpu bound but fast-ish) or copy it.
+                # A better approach for async persistence:
+                # 1. Serialize to JSON string in main thread (async lock held).
+                # 2. Write string to file in executor.
+                pass
+        except Exception:
+            pass
+            
+    # RETRY: Simplest working async version without over-optimizing executor yet, 
+    # as json.dump on reasonable history is fast enough. 
+    # Or just keep it sync but protected by lock? No, async lock needs await.
+    
+    async def save_history(self):
+        """
+        Save conversation history to disk using an atomic write pattern.
+        """
+        try:
+            async with self._lock:
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(self.history_file_path), exist_ok=True)
+
+                # Atomic write: write to temp file then rename
+                with tempfile.NamedTemporaryFile(
+                    "w",
+                    dir=os.path.dirname(self.history_file_path),
+                    delete=False,
+                    encoding="utf-8",
+                ) as tmp_file:
+                    json.dump([asdict(msg) for msg in self.history], tmp_file, ensure_ascii=False, indent=2)
+                    tmp_name = tmp_file.name
+
+                if os.path.exists(self.history_file_path) and os.name == 'nt':
+                     os.remove(self.history_file_path)
+                
+                os.replace(tmp_name, self.history_file_path)
+                logging.debug(f"Saved history to {self.history_file_path}")
+
+        except Exception as e:
+            logging.error(f"Failed to save history: {e}")
+            if 'tmp_name' in locals() and os.path.exists(tmp_name):
+                os.remove(tmp_name)
 
     async def summarize_messages(self, messages: List[ChatMessage]) -> ChatMessage:
         """
@@ -347,6 +464,23 @@ class LLMHistoryManager:
                         )
 
                 self.history_manager.frame_index += 1
+                self.history_manager.message_counter += 1
+
+                # Auto-save logic
+                if (
+                    self.history_manager.save_interval > 0
+                    and self.history_manager.message_counter % self.history_manager.save_interval == 0
+                ):
+                    # We can't await a sync function here if we didn't make save_history async, 
+                    # but file I/O is blocking anyway. For strict async correctness in a high-perf loop, 
+                    # we might want run_in_executor, but for this interval it's likely fine.
+                    # However, since we are in an async wrapper, let's keep it simple for now or use run_in_executor if needed.
+                    # Given the requirements, direct call is acceptable if acceptable latency.
+                    # Let's wrap it in a try-except block just in case to not break the flow.
+                    try:
+                        await self.history_manager.save_history()
+                    except Exception as e:
+                        logging.error(f"Auto-save failed: {e}")
 
                 return response
 

@@ -13,12 +13,28 @@ zenoh_mock = types.ModuleType("zenoh")
 pycdr2_mock = types.ModuleType("pycdr2")
 pycdr2_types_mock = types.ModuleType("pycdr2.types")
 
-# Add attributes if accessed at import time (optional, based on error logs)
-# zenoh_mock.some_attr = ...
+# Add attributes accessed at import time
+class MockIdlStruct:
+    def __init_subclass__(cls, **kwargs): pass
+
+pycdr2_mock.IdlStruct = MockIdlStruct
+for attr in ["float64", "float32", "int32", "uint32", "int8", "uint8", "int16", "uint16", "int64", "uint64", "sequence", "array"]:
+    setattr(pycdr2_types_mock, attr, MagicMock())
 
 sys.modules["zenoh"] = zenoh_mock
 sys.modules["pycdr2"] = pycdr2_mock
 sys.modules["pycdr2.types"] = pycdr2_types_mock
+sys.modules["zenoh_msgs"] = MagicMock()
+sys.modules["zenoh_msgs.idl"] = MagicMock()
+sys.modules["zenoh_msgs.idl.std_msgs"] = MagicMock()
+sys.modules["zenoh_msgs.idl.geographic_msgs"] = MagicMock()
+
+# Mock internal dependencies to isolate unit test
+sys.modules["src.providers.io_provider"] = MagicMock()
+
+from llm import LLMConfig
+# Patch ChatMessage locally if needed or import
+from src.providers.llm_history_manager import ChatMessage, LLMHistoryManager
 
 from llm import LLMConfig
 # Patch ChatMessage locally if needed or import

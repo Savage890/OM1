@@ -2,6 +2,15 @@
 
 We welcome contributions from the community!  OM1 is an open-source project, and we appreciate your help in making it better.  Whether you're fixing bugs, adding features, improving documentation, or suggesting new ideas, your contributions are valuable.
 
+## Quick Checklist
+
+1.  **Fork** the repository and **Clone** it locally.
+2.  **Create a Branch** for your changes.
+3.  **Install Dependencies** using `uv`.
+4.  **Make Changes** and Ensure code passes linting (`pre-commit run --all-files`).
+5.  **Run Tests** (`uv run pytest`).
+6.  **Push** and Open a **Pull Request**.
+
 Before contributing, please take a moment to read through the following guidelines. This helps streamline the process and ensures everyone is on the same page.
 
 **PRs must clearly state the problem being solved. Changes without a clear problem statement may be closed without review.**

@@ -295,12 +295,18 @@ class LLMHistoryManager:
                 logging.debug(f"LLM Tasking cycle debug tracker: {cycle}")
 
                 current_tick = self.io_provider.tick_counter
+                has_new_inputs = False
                 formatted_inputs = f"{self.agent_name} sensed the following: "
                 for input_type, input_info in self.io_provider.inputs.items():
                     if input_info.tick == current_tick:
                         logging.debug(f"LLM: {input_type} (tick #{input_info.tick})")
                         logging.debug(f"LLM: {input_info}")
                         formatted_inputs += f"{input_type}. {input_info.input} | "
+                        has_new_inputs = True
+
+                if not has_new_inputs:
+                    logging.debug(f"No new sensor inputs for tick {current_tick}. Skipping LLM call.")
+                    return None
 
                 formatted_inputs = formatted_inputs.replace("..", ".")
                 formatted_inputs = formatted_inputs.replace("  ", " ")

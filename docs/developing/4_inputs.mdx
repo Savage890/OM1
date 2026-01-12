@@ -25,28 +25,4 @@ Here are a few examples for you to reuse and build on:
 - [VLM_Vila](https://github.com/openmind/OM1/blob/main/src/inputs/plugins/vlm_vila.py)
 - [Arduino GPS](https://github.com/openmind/OM1/blob/main/src/inputs/plugins/gps.py)
 
-
-## GoogleASRInput Configuration
-
-To use the `GoogleASRInput` plugin, add it to your `agent_inputs` list in the configuration file.
-
-### Parameters
-
-*   `type`: Must be `"GoogleASRInput"`.
-*   `config`:
-    *   `language`: (Optional) The language code for speech recognition. Defaults to `"english"`.
-        *   Supported values: `"english"`, `"chinese"`, `"german"`, `"french"`, `"japanese"`, `"korean"`, `"spanish"`, `"italian"`, `"portuguese"`, `"russian"`, `"arabic"`, and `"auto"` (Automatic Detection).
-
-### Example
-
-```json5
-{
-  "type": "GoogleASRInput",
-  "config": {
-    "language": "auto"  // or "chinese", "english", etc.
-  }
-}
-```
-
-
 Learn how to build a new input plugin [here](../developer_cookbook/input.mdx)
